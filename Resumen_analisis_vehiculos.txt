@@ -1,0 +1,17 @@
+RESULTADOS DEL ANÁLISIS
+➡️  Tamaño total de la flota: 8597 vehículos
+📊 Distribución por estado en fleet-moviles:
+   - ATIVO - BIPANDO: 6988 vehículos (81.28%)
+   - EM MANUTENÇÃO: 1316 vehículos (15.31%)
+   - INOPERANTE: 282 vehículos (3.28%)
+   - DEVOLVIDO: 6 vehículos (0.07%)
+   - FROTA OCIOSA: 4 vehículos (0.05%)
+   - IMPLANTAÇÃO: 1 vehículos (0.01%)
+
+⚠️ Inconsistencias detectadas:
+🔄 Vehículos 'ATIVO - BIPANDO' que figuran en disponibilidad:
+   872 vehículos (10.14%)
+🔄 Vehículos 'FROTA OCIOSA' que NO figuran en disponibilidad:
+   2 vehículos (0.02%)
+
+🔄 Total de vehículos con estado a actualizar: 874 vehículos (10.17%)
