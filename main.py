@@ -49,3 +49,8 @@ async def procesar_excel(
     return StreamingResponse(output_stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={
         "Content-Disposition": "attachment; filename=Vehiculos_para_actualizar_estado.xlsx"
     })
+
+
+@app.get("/")
+def root():
+    return {"message": "API de procesamiento de flota funcionando correctamente."}
