@@ -1,8 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 import pandas as pd
-import tempfile
-import os
+import io
 
 app = FastAPI()
 
@@ -11,43 +10,42 @@ async def procesar_excel(
     fleet_file: UploadFile = File(...),
     disponibilidad_file: UploadFile = File(...),
 ):
-    # Crear archivos temporales
-    with tempfile.TemporaryDirectory() as tmpdir:
-        fleet_path = os.path.join(tmpdir, "fleet.xlsx")
-        disp_path = os.path.join(tmpdir, "disponibilidad.xlsx")
-        output_path = os.path.join(tmpdir, "Vehiculos_para_actualizar_estado.xlsx")
+    # Leer los archivos recibidos
+    fleet_df = pd.read_excel(await fleet_file.read())
+    disponibilidad_df = pd.read_excel(await disponibilidad_file.read())
 
-        with open(fleet_path, "wb") as f:
-            f.write(await fleet_file.read())
-        with open(disp_path, "wb") as f:
-            f.write(await disponibilidad_file.read())
+    # Normalizar y filtrar
+    fleet_filtered = fleet_df[['Placa', 'Estado']].copy()
+    fleet_filtered['Placa'] = fleet_filtered['Placa'].astype(str).str.upper().str.strip()
+    disponibilidad_placas = disponibilidad_df['Veículo'].astype(str).str.upper().str.strip().unique()
 
-        # Cargar data
-        fleet_df = pd.read_excel(fleet_path)
-        disponibilidad_df = pd.read_excel(disp_path)
+    # Condición A
+    cond_a = fleet_filtered[
+        (fleet_filtered['Estado'] == "ATIVO - BIPANDO") &
+        (fleet_filtered['Placa'].isin(disponibilidad_placas))
+    ].copy()
+    cond_a['Estado'] = "FROTA OCIOSA"
 
-        fleet_filtered = fleet_df[['Placa', 'Estado']].copy()
-        fleet_filtered['Placa'] = fleet_filtered['Placa'].astype(str).str.upper().str.strip()
-        disponibilidad_placas = disponibilidad_df['Veículo'].astype(str).str.upper().str.strip().unique()
+    # Condición B
+    cond_b = fleet_filtered[
+        (fleet_filtered['Estado'] == "FROTA OCIOSA") &
+        (~fleet_filtered['Placa'].isin(disponibilidad_placas))
+    ].copy()
+    cond_b['Estado'] = "ATIVO - BIPANDO"
 
-        cond_a = fleet_filtered[
-            (fleet_filtered['Estado'] == "ATIVO - BIPANDO") &
-            (fleet_filtered['Placa'].isin(disponibilidad_placas))
-        ].copy()
-        cond_a['Estado'] = "FROTA OCIOSA"
+    # Unir resultados
+    result_df = pd.concat([cond_a, cond_b], ignore_index=True)
+    output_df = pd.DataFrame(columns=["Dominio", "Estado"])
+    output_df['Dominio'] = result_df['Placa'].values
+    output_df['Estado'] = result_df['Estado'].values
 
-        cond_b = fleet_filtered[
-            (fleet_filtered['Estado'] == "FROTA OCIOSA") &
-            (~fleet_filtered['Placa'].isin(disponibilidad_placas))
-        ].copy()
-        cond_b['Estado'] = "ATIVO - BIPANDO"
+    # Guardar a memoria
+    output_stream = io.BytesIO()
+    with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
+        output_df.to_excel(writer, index=False)
+    output_stream.seek(0)
 
-        result_df = pd.concat([cond_a, cond_b], ignore_index=True)
-
-        # Crear Excel final
-        output_df = pd.DataFrame(columns=["Dominio", "Estado"])
-        output_df['Dominio'] = result_df['Placa'].values
-        output_df['Estado'] = result_df['Estado'].values
-        output_df.to_excel(output_path, index=False)
-
-        return FileResponse(output_path, filename="Vehiculos_para_actualizar_estado.xlsx")
+    # Devolver archivo como descarga
+    return StreamingResponse(output_stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={
+        "Content-Disposition": "attachment; filename=Vehiculos_para_actualizar_estado.xlsx"
+    })
