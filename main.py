@@ -53,4 +53,4 @@ async def procesar_excel(
 
 @app.get("/")
 def root():
-    return {"message": "API de procesamiento de flota funcionando correctamente."}
+    return {"status": "ok", "message": "La API de actualización de vehículos está funcionando correctamente 🚐"}
