@@ -151,7 +151,19 @@
       formData.append("disponibilidad_file", dispFile);
 
       status.innerText = 'Processing...';
-      progressBar.style.width = '30%';
+      progressBar.style.width = '10%';
+      
+      let progress = 0;
+      progressBar.style.width = '10%';
+      const interval = setInterval(() => {
+        if (progress < 85) {
+          progress += 1;
+          progressBar.style.width = progress + '%';
+        }
+      }, 50);
+
+      status.innerText = 'Creating Excel and Statistics...';
+
       results.innerHTML = '';
       download.innerHTML = '';
 
