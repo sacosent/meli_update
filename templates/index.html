@@ -29,10 +29,17 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+    .logo img {
+      width: 120px;
+      margin-bottom: 8px;
+    }
+    .logo-text {
       font-size: 28px;
       font-weight: bold;
       color: var(--green);
-      margin-bottom: 10px;
       letter-spacing: 2px;
     }
     label {
@@ -91,7 +98,10 @@
   </style>
 </head>
 <body>
-  <div class="logo">ZuCo</div>
+  <div class="logo">
+    <img src="/static/logo.png" alt="ZuCo Logo">
+    <div class="logo-text">ZuCo</div>
+  </div>
   <h2>Fleet Status Updater</h2>
   <form id="upload-form">
     <label for="fleet_file">Fleet File (fleet-moviles.xlsx):</label>
@@ -118,7 +128,7 @@
       progressBar.style.width = '25%';
 
       try {
-        const response = await fetch('/process', {
+        const response = await fetch('/procesar', {
           method: 'POST',
           body: formData
         });
