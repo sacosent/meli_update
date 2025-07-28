@@ -8,6 +8,8 @@
     :root {
       --green: #00ff7f;
       --black: #111;
+      --darkgreen: #31875c;
+      --white: #ffffff;
     }
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -43,167 +45,181 @@
       color: var(--green);
       letter-spacing: 2px;
     }
-    label {
+    label, input, button {
       display: block;
-      margin-top: 20px;
-      color: #ddd;
+      width: 100%;
+      margin-top: 15px;
     }
     input[type="file"] {
-      width: 100%;
       padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #333;
       border-radius: 6px;
       background-color: #1f1f1f;
-      color: white;
+      border: 1px solid #333;
+      color: var(--white);
     }
     button {
-      margin-top: 30px;
+      margin-top: 20px;
       padding: 12px;
-      width: 100%;
       background: var(--green);
-      color: #111;
+      color: var(--black);
+      font-weight: bold;
       border: none;
       border-radius: 6px;
-      font-size: 16px;
-      font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s ease-in-out;
-    }
-    button:hover {
-      background: #00e673;
-    }
-    button:disabled {
-      background: #555;
-      color: #ccc;
-    }
-    #status {
-      margin-top: 20px;
-      text-align: center;
-      font-size: 14px;
-      color: var(--green);
     }
     #progress-container {
-      margin-top: 10px;
-      height: 8px;
-      background: #333;
+      width: 100%;
+      background-color: #333;
       border-radius: 5px;
       overflow: hidden;
+      margin-top: 20px;
     }
     #progress-bar {
-      height: 100%;
+      height: 8px;
       width: 0%;
       background: var(--green);
-      transition: width 0.3s ease;
+      transition: width 0.3s ease-in-out;
     }
-    #stats-table {
+    #results {
       margin-top: 30px;
+    }
+    table {
       width: 100%;
+      margin-top: 20px;
       border-collapse: collapse;
+      background-color: #222;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 8px;
       text-align: left;
     }
-    #stats-table th, #stats-table td {
-      padding: 10px;
-      border-bottom: 1px solid #444;
+    th {
+      background-color: var(--green);
+      color: var(--black);
     }
-    #stats-table th {
-      background-color: #222;
-      color: var(--green);
-    }
-    #charts {
-      margin-top: 40px;
-    }
-    canvas {
+
+    #download-link {
+      display: none;
       margin-top: 20px;
-      width: 100% !important;
-      height: 300px !important;
+      text-align: center;
     }
+    #download-link a {
+      color: var(--green);
+      font-weight: bold;
+    }
+    .download-btn {
+    background: var(--darkgreen);
+    color: var(--white);
+    }
+    
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="logo">
     <img src="/static/logo.png" alt="ZuCo Logo">
-    <div class="logo-text">ZuCo</div>
   </div>
+
   <h2>Fleet Status Updater</h2>
-  <form id="upload-form">
-    <label for="fleet_file">Fleet File (fleet-moviles.xlsx):</label>
-    <input type="file" id="fleet_file" name="fleet_file" accept=".xlsx" required>
 
-    <label for="disponibilidad_file">Disponibilidad File (disponibilidad.xlsx):</label>
-    <input type="file" id="disponibilidad_file" name="disponibilidad_file" accept=".xlsx" required>
+  <label>Fleet File (fleet-moviles.xls):</label>
+  <input type="file" id="fleet-file">
 
-    <button type="submit">Upload & Process</button>
-  </form>
+  <label>Availability File (disponibilidad.xls):</label>
+  <input type="file" id="disp-file">
+
+  <button onclick="enviarArchivos()">Process Files</button>
+
   <div id="progress-container"><div id="progress-bar"></div></div>
   <div id="status"></div>
-  <div id="stats"></div>
-  <div id="charts">
-    <canvas id="chart1"></canvas>
-    <canvas id="chart2"></canvas>
-  </div>
+  <div id="download-link"></div>
+  <div id="results"></div>
+
 
   <script>
-    const form = document.getElementById('upload-form');
-    const statusDiv = document.getElementById('status');
-    const progressBar = document.getElementById('progress-bar');
-    const statsDiv = document.getElementById('stats');
+    async function enviarArchivos() {
+      const fleetFile = document.getElementById('fleet-file').files[0];
+      const dispFile = document.getElementById('disp-file').files[0];
+      const status = document.getElementById('status');
+      const results = document.getElementById('results');
+      const download = document.getElementById('download-link');
+      const progressBar = document.getElementById('progress-bar');
 
-    let chart1, chart2;
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(form);
-
-      statusDiv.textContent = 'Uploading and processing...';
-      progressBar.style.width = '25%';
-
-      try {
-        const response = await fetch('/process', {
-          method: 'POST',
-          body: formData
-        });
-
-        progressBar.style.width = '50%';
-
-        if (!response.ok) {
-          throw new Error('Server returned ' + response.status);
-        }
-
-        const data = await response.json();
-
-        // download file
-        const byteCharacters = atob(data.file);
-        const byteNumbers = new Array(byteCharacters.length).fill().map((_, i) => byteCharacters.charCodeAt(i));
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = "vehiculos_para_actualizar_estado.xlsx";
-        a.click();
-        a.remove();
-
-        progressBar.style.width = '75%';
-        statusDiv.textContent = '✅ File downloaded and stats generated';
-
-        // update stats table
-        statsDiv.innerHTML = `
-          <table id="stats-table">
-            <thead>
-              <tr><th>Metric</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-              ${Object.entries(data.stats).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
-            </tbody>
-          </table>`;
-
-        progressBar.style.width = '100%';
-      } catch (err) {
-        progressBar.style.width = '0%';
-        statusDiv.textContent = '❌ Error: ' + err.message;
+      if (!fleetFile || !dispFile) {
+        status.innerText = '⚠️ Both files are required';
+        return;
       }
-    });
+
+      const formData = new FormData();
+      formData.append("fleet_file", fleetFile);
+      formData.append("disponibilidad_file", dispFile);
+
+      status.innerText = 'Processing...';
+      progressBar.style.width = '30%';
+      results.innerHTML = '';
+      download.innerHTML = '';
+
+      const res = await fetch("/process", {
+        method: "POST",
+        body: formData
+      });
+
+      let data;
+      try {
+        data = await res.json();
+        progressBar.style.width = '80%';
+      } catch (e) {
+        status.innerText = '❌ Error: Invalid server response';
+        return;
+      }
+
+      if (!res.ok) {
+        status.innerText = '❌ Error: ' + (data.error || 'Unknown');
+        return;
+      }
+
+      status.innerText = '✅ Process completed';
+      progressBar.style.width = '100%';
+
+      // Table
+      if (data.table_data && data.table_data.length > 0) {
+        const table = document.createElement("table");
+        const headers = Object.keys(data.table_data[0]);
+        const thead = document.createElement("thead");
+        const tr = document.createElement("tr");
+        headers.forEach(h => {
+          const th = document.createElement("th");
+          th.innerText = h;
+          tr.appendChild(th);
+        });
+        thead.appendChild(tr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        data.table_data.forEach(row => {
+          const tr = document.createElement("tr");
+          headers.forEach(h => {
+            const td = document.createElement("td");
+            td.innerText = row[h];
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        results.appendChild(table);
+      }
+
+      // Download link
+      if (data.download_link) {
+        const btn = document.createElement("button");
+        btn.textContent = "⬇️ Download generated Excel";
+        btn.className = "download-btn";
+        btn.onclick = () => window.location.href = data.download_link;
+        download.innerHTML = '';
+        download.appendChild(btn);
+        download.style.display = 'block';
+      }
+    }
   </script>
 </body>
 </html>

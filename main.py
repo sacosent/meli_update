@@ -3,7 +3,10 @@ from fastapi.staticfiles    import StaticFiles
 from fastapi.responses      import HTMLResponse, JSONResponse
 import pandas as pd
 import io
-import base64
+import tempfile
+import os
+
+column_corrector = 21
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -19,66 +22,71 @@ async def serve_index(request: Request):
         return HTMLResponse(f.read())
 
 @app.post("/process")
-async def procesar_archivos(fleet_file: UploadFile = File(...), disponibilidad_file: UploadFile = File(...)):
-    fleet_df = pd.read_excel(io.BytesIO(await fleet_file.read()))
-    disp_df = pd.read_excel(io.BytesIO(await disponibilidad_file.read()))
+async def procesar_archivos(
+    fleet_file: UploadFile = File(...),
+    disponibilidad_file: UploadFile = File(...)
+):
+    try:
+        fleet_bytes = await fleet_file.read()
+        disp_bytes = await disponibilidad_file.read()
 
-    fleet_df = fleet_df[['Placa', 'Estado']].dropna()
-    fleet_df['Placa'] = fleet_df['Placa'].astype(str).str.upper().str.strip()
-    disp_set = set(disp_df['Veículo'].dropna().astype(str).str.upper().str.strip())
+        fleet_df = pd.read_excel(io.BytesIO(fleet_bytes))
+        disp_df = pd.read_excel(io.BytesIO(disp_bytes))
 
-    activos = fleet_df[fleet_df['Estado'] == 'ATIVO - BIPANDO']
-    ociosos = fleet_df[fleet_df['Estado'] == 'FROTA OCIOSA']
+        # Normalización de columnas
+        fleet_df.columns = fleet_df.columns.str.strip().str.upper()
+        disp_df.columns = disp_df.columns.str.strip().str.upper()
 
-    activos_mal = activos[activos['Placa'].isin(disp_set)]
-    ociosos_mal = ociosos[~ociosos['Placa'].isin(disp_set)]
+        # Validación de columnas
+        if 'PLACA' not in fleet_df.columns or 'ESTADO' not in fleet_df.columns:
+            return JSONResponse({"error": "Las columnas 'Placa' y/o 'Estado' no se encontraron en fleet-moviles."}, status_code=400)
+        if 'VEÍCULO' not in disp_df.columns:
+            return JSONResponse({"error": "La columna 'Veículo' no se encontró en disponibilidad."}, status_code=400)
 
-    total_flota = len(fleet_df)
-    total_activos = len(activos)
-    total_ociosos = len(ociosos)
-    cant_activos_mal = len(activos_mal)
-    cant_ociosos_mal = len(ociosos_mal)
-    total_errores = cant_activos_mal + cant_ociosos_mal
+        # Preprocesamiento
+        fleet_df = fleet_df[['PLACA', 'ESTADO']].dropna()
+        fleet_df['PLACA'] = fleet_df['PLACA'].astype(str).str.upper().str.strip()
+        disp_set = set(disp_df['VEÍCULO'].dropna().astype(str).str.upper().str.strip())
 
-    pct_activos = round((total_activos / total_flota) * 100, 2) if total_flota else 0
-    pct_ociosos = round((total_ociosos / total_flota) * 100, 2) if total_flota else 0
-    pct_activos_mal = round((cant_activos_mal / total_flota) * 100, 2) if total_flota else 0
-    pct_ociosos_mal = round((cant_ociosos_mal / total_flota) * 100, 2) if total_flota else 0
-    pct_total_errores = round((total_errores / total_flota) * 100, 2) if total_flota else 0
+        # Identificación de inconsistencias
+        activos = set(fleet_df[fleet_df['ESTADO'] == 'ATIVO - BIPANDO']['PLACA'])
+        ociosos = set(fleet_df[fleet_df['ESTADO'] == 'FROTA OCIOSA']['PLACA'])
 
-    # Estados detallados
-    estado_counts = fleet_df['Estado'].value_counts()
-    estados_detalle = {
-        estado: f"{count} ({round((count / total_flota) * 100, 2)}%)"
-        for estado, count in estado_counts.items()
-    }
+        activos_deberian_ser_ociosos = activos & disp_set
+        ociosos_deberian_ser_activos = ociosos - disp_set
 
-    # Create output Excel
-    modelo_df = pd.DataFrame(columns=list("ABCDEFGHIJKLMNOPQRSTUVWX"))
-    modelo_df['A'] = pd.concat([activos_mal['Placa'], ociosos_mal['Placa']], ignore_index=True)
-    modelo_df['W'] = ['FROTA OCIOSA'] * cant_activos_mal + ['ATIVO - BIPANDO'] * cant_ociosos_mal
+        # Creación del Excel final
+        output_df = pd.DataFrame(columns=['Dominio'] + [''] * column_corrector + ['Estado'])
+        for placa in activos_deberian_ser_ociosos:
+            output_df.loc[len(output_df)] = [placa] + [''] * column_corrector + ['FROTA OCIOSA']
+        for placa in ociosos_deberian_ser_activos:
+            output_df.loc[len(output_df)] = [placa] + [''] * column_corrector + ['ATIVO - BIPANDO']
 
-    output = io.BytesIO()
-    modelo_df.to_excel(output, index=False, header=False)
-    output.seek(0)
-    b64_excel = base64.b64encode(output.read()).decode('utf-8')
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
+            output_path = tmp.name
+        output_df.to_excel(output_path, index=False)
 
-    # Build response
-    return JSONResponse({
-        "file": b64_excel,
-        "stats": {
-            "Total Flota": total_flota,
-            **estados_detalle,
-            "Activas mal": f"{cant_activos_mal} ({pct_activos_mal}%)",
-            "Ociosas mal": f"{cant_ociosos_mal} ({pct_ociosos_mal}%)",
-            "Total con errores": f"{total_errores} ({pct_total_errores}%)"
-        },
-        "chart1": {
-            "labels": list(estados_detalle.keys()),
-            "values": [int(s.split()[0]) for s in estados_detalle.values()]
-        },
-        "chart2": {
-            "labels": ["Activas que deberían ser ociosas", "Ociosas que deberían ser activas"],
-            "values": [cant_activos_mal, cant_ociosos_mal]
-        }
-    })
+
+        total_flota = len(fleet_df)
+        if total_flota == 0:
+            estado_counts = {}
+            estado_pct = {}
+        else:
+            estado_counts = fleet_df['ESTADO'].value_counts().to_dict()
+            estado_pct = {k: round(v * 100 / total_flota, 2) for k, v in estado_counts.items()}
+
+
+        # Save Excel and build download link
+        file_name = os.path.basename(output_path)
+        os.rename(output_path, f'static/{file_name}')
+        download_link = f"/static/{file_name}"
+
+        return JSONResponse({
+            "status": "success",
+            "table_data": [{"Estado": k, "Cantidad": v, "Porcentaje": estado_pct.get(k, 0)} for k, v in estado_counts.items()],
+            "download_link": download_link
+        })
+
+    
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
