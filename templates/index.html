@@ -3,49 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fleet Status Updater</title>
+  <title>ZuCo Fleet Status Updater</title>
   <style>
+    :root {
+      --green: #00ff7f;
+      --black: #111;
+    }
     body {
-      font-family: sans-serif;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--black);
+      color: white;
       max-width: 500px;
       margin: 50px auto;
-      padding: 20px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      background: #f9f9f9;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(0, 255, 127, 0.3);
+      background: linear-gradient(160deg, #111, #1a1a1a);
     }
     h2 {
       text-align: center;
+      margin-bottom: 20px;
+      color: var(--green);
+    }
+    .logo {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--green);
+      margin-bottom: 10px;
+      letter-spacing: 2px;
     }
     label {
       display: block;
       margin-top: 20px;
+      color: #ddd;
     }
     input[type="file"] {
       width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background-color: #1f1f1f;
+      color: white;
     }
     button {
       margin-top: 30px;
-      padding: 10px;
+      padding: 12px;
       width: 100%;
-      background: #0077cc;
-      color: white;
+      background: var(--green);
+      color: #111;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
+      transition: background 0.2s ease-in-out;
+    }
+    button:hover {
+      background: #00e673;
     }
     button:disabled {
-      background: #999;
+      background: #555;
+      color: #ccc;
     }
     #status {
       margin-top: 20px;
       text-align: center;
       font-size: 14px;
+      color: var(--green);
     }
   </style>
 </head>
 <body>
+  <div class="logo">ZuCo</div>
   <h2>Fleet Status Updater</h2>
   <form id="upload-form">
     <label for="fleet_file">Fleet File (fleet-moviles.xlsx):</label>
