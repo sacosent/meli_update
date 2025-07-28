@@ -13,7 +13,7 @@
       font-family: 'Segoe UI', sans-serif;
       background-color: var(--black);
       color: white;
-      max-width: 500px;
+      max-width: 700px;
       margin: 50px auto;
       padding: 30px;
       border-radius: 12px;
@@ -37,7 +37,6 @@
       max-width: 100%;
       margin-bottom: 8px;
     }
-
     .logo-text {
       font-size: 28px;
       font-weight: bold;
@@ -97,11 +96,35 @@
       background: var(--green);
       transition: width 0.3s ease;
     }
+    #stats-table {
+      margin-top: 30px;
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    #stats-table th, #stats-table td {
+      padding: 10px;
+      border-bottom: 1px solid #444;
+    }
+    #stats-table th {
+      background-color: #222;
+      color: var(--green);
+    }
+    #charts {
+      margin-top: 40px;
+    }
+    canvas {
+      margin-top: 20px;
+      width: 100% !important;
+      height: 300px !important;
+    }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="logo">
     <img src="/static/logo.png" alt="ZuCo Logo">
+    <div class="logo-text">ZuCo</div>
   </div>
   <h2>Fleet Status Updater</h2>
   <form id="upload-form">
@@ -115,11 +138,19 @@
   </form>
   <div id="progress-container"><div id="progress-bar"></div></div>
   <div id="status"></div>
+  <div id="stats"></div>
+  <div id="charts">
+    <canvas id="chart1"></canvas>
+    <canvas id="chart2"></canvas>
+  </div>
 
   <script>
     const form = document.getElementById('upload-form');
     const statusDiv = document.getElementById('status');
     const progressBar = document.getElementById('progress-bar');
+    const statsDiv = document.getElementById('stats');
+
+    let chart1, chart2;
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -140,19 +171,34 @@
           throw new Error('Server returned ' + response.status);
         }
 
-        const blob = await response.blob();
-        progressBar.style.width = '75%';
+        const data = await response.json();
 
-        const downloadUrl = window.URL.createObjectURL(blob);
+        // download file
+        const byteCharacters = atob(data.file);
+        const byteNumbers = new Array(byteCharacters.length).fill().map((_, i) => byteCharacters.charCodeAt(i));
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = "Vehiculos_para_actualizar_estado.xlsx";
-        document.body.appendChild(a);
+        a.href = URL.createObjectURL(blob);
+        a.download = "vehiculos_para_actualizar_estado.xlsx";
         a.click();
         a.remove();
 
+        progressBar.style.width = '75%';
+        statusDiv.textContent = '✅ File downloaded and stats generated';
+
+        // update stats table
+        statsDiv.innerHTML = `
+          <table id="stats-table">
+            <thead>
+              <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              ${Object.entries(data.stats).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+            </tbody>
+          </table>`;
+
         progressBar.style.width = '100%';
-        statusDiv.textContent = '✅ File downloaded successfully';
       } catch (err) {
         progressBar.style.width = '0%';
         statusDiv.textContent = '❌ Error: ' + err.message;
