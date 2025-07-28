@@ -8,6 +8,8 @@
     :root {
       --green: #00ff7f;
       --black: #111;
+      --darkgreen: #31875c;
+      --white: #ffffff;
     }
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -53,13 +55,13 @@
       border-radius: 6px;
       background-color: #1f1f1f;
       border: 1px solid #333;
-      color: white;
+      color: var(--white);
     }
     button {
       margin-top: 20px;
       padding: 12px;
       background: var(--green);
-      color: #111;
+      color: var(--black);
       font-weight: bold;
       border: none;
       border-radius: 6px;
@@ -94,8 +96,9 @@
     }
     th {
       background-color: var(--green);
-      color: #111;
+      color: var(--black);
     }
+
     #download-link {
       display: none;
       margin-top: 20px;
@@ -106,23 +109,23 @@
       font-weight: bold;
     }
     .download-btn {
-    background: #007f4f;
-    color: white;
-  }
-</style>
+    background: var(--darkgreen);
+    color: var(--white);
+    }
+    
+  </style>
 </head>
 <body>
   <div class="logo">
     <img src="/static/logo.png" alt="ZuCo Logo">
-    <div class="logo-text">ZuCo Fleet Updater</div>
   </div>
 
   <h2>Fleet Status Updater</h2>
 
-  <label>Fleet File:</label>
+  <label>Fleet File (fleet-moviles.xls):</label>
   <input type="file" id="fleet-file">
 
-  <label>Availability File:</label>
+  <label>Availability File (disponibilidad.xls):</label>
   <input type="file" id="disp-file">
 
   <button onclick="enviarArchivos()">Process Files</button>
@@ -131,7 +134,7 @@
   <div id="status"></div>
   <div id="download-link"></div>
   <div id="results"></div>
-  
+
 
   <script>
     async function enviarArchivos() {
@@ -176,7 +179,15 @@
       }
 
       status.innerText = '✅ Process completed';
-      progressBar.style.width = '100%';
+      
+      let progress = 0;
+      progressBar.style.width = '0%';
+      const interval = setInterval(() => {
+        if (progress < 80) {
+        progress += 1;
+        progressBar.style.width = progress + '%';
+        }
+      }, 50);
 
       // Table
       if (data.table_data && data.table_data.length > 0) {
@@ -207,26 +218,16 @@
       }
 
       // Download link
-      const downloadBtn = document.createElement("button");
-      downloadBtn.textContent = "⬇️ Download Excel ⬇️";
-      downloadBtn.className = "download-btn";
-      downloadBtn.onclick = async () => {
-        const res = await fetch("/download");
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = data.filename || "vehicle_fleet_update.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      };
-      download.innerHTML = '';
-      download.appendChild(downloadBtn);
-      download.style.display = 'block';
+      if (data.download_link) {
+        const btn = document.createElement("button");
+        btn.textContent = "⬇️ Download generated Excel";
+        btn.className = "download-btn";
+        btn.onclick = () => window.location.href = data.download_link;
+        download.innerHTML = '';
+        download.appendChild(btn);
+        download.style.display = 'block';
       }
-    
+    }
   </script>
 </body>
 </html>
