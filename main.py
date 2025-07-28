@@ -15,10 +15,11 @@ def root():
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index(request: Request):
-    with open("templates/index.html") as f:
+    with open("templates/index.html", "r", encoding="utf-8") as f:
+
         return HTMLResponse(f.read())
 
-@app.post("/procesar")
+@app.post("/process")
 async def procesar_excel(
     fleet_file: UploadFile = File(...),
     disponibilidad_file: UploadFile = File(...),
