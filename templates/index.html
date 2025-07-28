@@ -179,7 +179,15 @@
       }
 
       status.innerText = '✅ Process completed';
-      progressBar.style.width = '100%';
+      
+      let progress = 0;
+      progressBar.style.width = '0%';
+      const interval = setInterval(() => {
+        if (progress < 80) {
+        progress += 1;
+        progressBar.style.width = progress + '%';
+        }
+      }, 50);
 
       // Table
       if (data.table_data && data.table_data.length > 0) {

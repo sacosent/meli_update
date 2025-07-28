@@ -1,12 +1,18 @@
 from fastapi                import FastAPI, UploadFile, File, Request
 from fastapi.staticfiles    import StaticFiles
-from fastapi.responses      import HTMLResponse, JSONResponse
+from fastapi.responses      import HTMLResponse, JSONResponse, StreamingResponse
+from datetime               import datetime
+
 import pandas as pd
 import io
 import tempfile
 import os
 
 column_corrector = 21
+
+# Generate filename with current date
+current_date = datetime.now().strftime("%d%m%Y")
+filename = f"vehicle_fleet_update_{current_date}.xlsx"
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -78,8 +84,8 @@ async def procesar_archivos(
 
         # Save Excel and build download link
         file_name = os.path.basename(output_path)
-        os.rename(output_path, f'static/{file_name}')
-        download_link = f"/static/{file_name}"
+        os.rename(output_path, f'tmp/{file_name}')
+        download_link = f"/tmp/{file_name}"
 
         return JSONResponse({
             "status": "success",
