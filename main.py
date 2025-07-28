@@ -6,10 +6,7 @@ import io
 import os
 
 app = FastAPI()
-
-app.mount("/static", StaticFiles(directory="templates"), name="static")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 @app.get("/heartbeat")
 def root():
