@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Status Updater</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #f9f9f9;
+    }
+    h2 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 20px;
+    }
+    input[type="file"] {
+      width: 100%;
+    }
+    button {
+      margin-top: 30px;
+      padding: 10px;
+      width: 100%;
+      background: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #999;
+    }
+    #status {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Fleet Status Updater</h2>
+  <form id="upload-form">
+    <label for="fleet_file">Fleet File (fleet-moviles.xlsx):</label>
+    <input type="file" id="fleet_file" name="fleet_file" accept=".xlsx" required>
+
+    <label for="disponibilidad_file">Disponibilidad File (disponibilidad.xlsx):</label>
+    <input type="file" id="disponibilidad_file" name="disponibilidad_file" accept=".xlsx" required>
+
+    <button type="submit">Upload & Process</button>
+  </form>
+  <div id="status"></div>
+
+  <script>
+    const form = document.getElementById('upload-form');
+    const statusDiv = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+
+      statusDiv.textContent = 'Uploading and processing...';
+
+      try {
+        const response = await fetch('/procesar', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('Server returned ' + response.status);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = "Vehiculos_para_actualizar_estado.xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        statusDiv.textContent = '✅ File downloaded successfully';
+      } catch (err) {
+        statusDiv.textContent = '❌ Error: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

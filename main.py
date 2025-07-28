@@ -1,9 +1,22 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi                import FastAPI, UploadFile, File, Request
+from fastapi.staticfiles    import StaticFiles
+from fastapi.responses      import StreamingResponse, HTMLResponse
 import pandas as pd
 import io
+import os
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="templates"), name="static")
+
+@app.get("/heartbeat")
+def root():
+    return {"status": "ok", "message": "La API de actualización de vehículos está funcionando correctamente 🚐"}
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_index(request: Request):
+    with open("templates/index.html") as f:
+        return HTMLResponse(f.read())
 
 @app.post("/procesar")
 async def procesar_excel(
@@ -11,8 +24,11 @@ async def procesar_excel(
     disponibilidad_file: UploadFile = File(...),
 ):
     # Leer los archivos recibidos
-    fleet_df = pd.read_excel(await fleet_file.read())
-    disponibilidad_df = pd.read_excel(await disponibilidad_file.read())
+    fleet_content = await fleet_file.read()
+    disp_content = await disponibilidad_file.read()
+
+    fleet_df = pd.read_excel(io.BytesIO(fleet_content))
+    disponibilidad_df = pd.read_excel(io.BytesIO(disp_content))
 
     # Normalizar y filtrar
     fleet_filtered = fleet_df[['Placa', 'Estado']].copy()
@@ -49,8 +65,3 @@ async def procesar_excel(
     return StreamingResponse(output_stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={
         "Content-Disposition": "attachment; filename=Vehiculos_para_actualizar_estado.xlsx"
     })
-
-
-@app.get("/")
-def root():
-    return {"status": "ok", "message": "La API de actualización de vehículos está funcionando correctamente 🚐"}
