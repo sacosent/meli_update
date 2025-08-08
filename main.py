@@ -13,7 +13,7 @@ last_excel_stream = None  # memoria temporal
 
 @app.get("/heartbeat")
 def root():
-    return {"status": "ok", "message": "ZuCo API is running 🚐"}
+    return {"status": "ok", "message": "MeLi API is running 🚐"}
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index(request: Request):
